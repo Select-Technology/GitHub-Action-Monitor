@@ -336,6 +336,63 @@
     .error-message.hidden {
       display: none;
     }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-top: 1px solid #0f3460;
+      margin-top: 16px;
+    }
+
+    .setting-label {
+      font-size: 14px;
+    }
+
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #0f3460;
+      border-radius: 24px;
+      transition: 0.3s;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .toggle input:checked + .toggle-slider {
+      background: #e87722;
+    }
+
+    .toggle input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
   </style>
 </head>
 <body>
@@ -380,6 +437,13 @@
       <div class="error-message hidden" id="tokenError"></div>
       <label for="tokenInput">Personal Access Token</label>
       <input type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxx">
+      <div class="setting-row">
+        <span class="setting-label">Start on login</span>
+        <label class="toggle">
+          <input type="checkbox" id="autoLaunchToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
       <div class="modal-buttons">
         <button class="btn btn-secondary" id="cancelTokenBtn">Cancel</button>
         <button class="btn btn-primary" id="saveTokenBtn">Save Token</button>
@@ -416,6 +480,8 @@
       startMonitoring();
     }
 
+    const autoLaunchToggle = document.getElementById('autoLaunchToggle');
+
     // Event Listeners
     saveTokenBtn.addEventListener('click', saveToken);
     cancelTokenBtn.addEventListener('click', hideTokenModal);
@@ -423,12 +489,23 @@
     tokenInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') saveToken();
     });
+    autoLaunchToggle.addEventListener('change', async (e) => {
+      if (window.electronAPI) {
+        await window.electronAPI.setAutoLaunch(e.target.checked);
+      }
+    });
 
-    function showTokenModal() {
+    async function showTokenModal() {
       tokenModal.classList.remove('hidden');
       tokenInput.value = token || '';
       tokenError.classList.add('hidden');
       tokenInput.focus();
+
+      // Load auto-launch state
+      if (window.electronAPI) {
+        const isEnabled = await window.electronAPI.getAutoLaunch();
+        autoLaunchToggle.checked = isEnabled;
+      }
     }
 
     function hideTokenModal() {

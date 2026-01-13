@@ -1,5 +1,11 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const AutoLaunch = require('auto-launch');
+
+const autoLauncher = new AutoLaunch({
+  name: 'GitHub Actions Monitor',
+  path: app.getPath('exe')
+});
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -8,14 +14,24 @@ function createWindow() {
     frame: false,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
   win.loadFile('index.html');
 }
 
-app.whenReady().then(() => {
+// Enable auto-launch by default on first run
+app.whenReady().then(async () => {
+  // Enable auto-launch if not in dev mode
+  if (app.isPackaged) {
+    const isEnabled = await autoLauncher.isEnabled();
+    if (!isEnabled) {
+      await autoLauncher.enable();
+    }
+  }
+
   createWindow();
 
   app.on('activate', () => {
@@ -23,6 +39,22 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+// IPC handlers for auto-launch toggle from renderer
+ipcMain.handle('get-auto-launch', async () => {
+  if (!app.isPackaged) return false;
+  return await autoLauncher.isEnabled();
+});
+
+ipcMain.handle('set-auto-launch', async (event, enabled) => {
+  if (!app.isPackaged) return false;
+  if (enabled) {
+    await autoLauncher.enable();
+  } else {
+    await autoLauncher.disable();
+  }
+  return enabled;
 });
 
 app.on('window-all-closed', () => {

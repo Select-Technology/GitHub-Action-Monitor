@@ -4,7 +4,9 @@
   "description": "A desktop application for monitoring GitHub Actions workflow runs across all your repositories",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win"
   },
   "keywords": [
     "github",
@@ -15,6 +17,29 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^33.0.0"
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "auto-launch": "^5.0.6"
+  },
+  "build": {
+    "appId": "com.select-technology.github-actions-monitor",
+    "productName": "GitHub Actions Monitor",
+    "win": {
+      "target": ["portable", "nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GitHub Actions Monitor"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html"
+    ]
   }
 }

@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Actions Monitor</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      -webkit-app-region: drag;
+    }
+
+    button, input, a {
+      -webkit-app-region: no-drag;
+    }
+
+    .header {
+      background: #3c1053;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .refresh-indicator {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .refresh-indicator.loading {
+      color: #e87722;
+    }
+
+    .settings-btn {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px 8px;
+    }
+
+    .settings-btn:hover {
+      color: #fff;
+    }
+
+    .status-bar {
+      background: #16213e;
+      padding: 12px 24px;
+      display: flex;
+      gap: 24px;
+      border-bottom: 1px solid #0f3460;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .status-dot.running {
+      background: #3498db;
+      animation: pulse 1.5s infinite;
+    }
+
+    .status-dot.success {
+      background: #27ae60;
+    }
+
+    .status-dot.failure {
+      background: #e74c3c;
+    }
+
+    .status-dot.queued {
+      background: #f39c12;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .main-content {
+      padding: 24px;
+      overflow-y: auto;
+      height: calc(100vh - 110px);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .empty-state h2 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .repo-group {
+      background: #16213e;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .repo-header {
+      background: #0f3460;
+      padding: 12px 16px;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .repo-header a {
+      color: #e87722;
+      text-decoration: none;
+    }
+
+    .repo-header a:hover {
+      text-decoration: underline;
+    }
+
+    .workflow-run {
+      padding: 12px 16px;
+      border-bottom: 1px solid #0f3460;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .workflow-run:last-child {
+      border-bottom: none;
+    }
+
+    .workflow-status {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .workflow-status.queued {
+      background: #f39c12;
+    }
+
+    .workflow-status.in_progress {
+      background: #3498db;
+      animation: pulse 1.5s infinite;
+    }
+
+    .workflow-status.success {
+      background: #27ae60;
+    }
+
+    .workflow-status.failure {
+      background: #e74c3c;
+    }
+
+    .workflow-status.cancelled {
+      background: #95a5a6;
+    }
+
+    .workflow-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .workflow-name {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .workflow-name a {
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .workflow-name a:hover {
+      color: #e87722;
+    }
+
+    .workflow-meta {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      display: flex;
+      gap: 12px;
+    }
+
+    .workflow-time {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      white-space: nowrap;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      -webkit-app-region: no-drag;
+    }
+
+    .modal-overlay.hidden {
+      display: none;
+    }
+
+    .modal {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 32px;
+      width: 90%;
+      max-width: 450px;
+    }
+
+    .modal h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .modal p {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .modal label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .modal input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      background: #1a1a2e;
+      color: #fff;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .modal input:focus {
+      outline: none;
+      border-color: #e87722;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: #e87722;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #d46a1a;
+    }
+
+    .btn-secondary {
+      background: #0f3460;
+      color: #fff;
+    }
+
+    .btn-secondary:hover {
+      background: #1a4a7a;
+    }
+
+    .error-message {
+      background: rgba(231, 76, 60, 0.2);
+      border: 1px solid #e74c3c;
+      color: #e74c3c;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .error-message.hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>GitHub Actions Monitor</h1>
+    <div class="header-right">
+      <span class="refresh-indicator" id="refreshIndicator">Last updated: --:--</span>
+      <button class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-item">
+      <span class="status-dot running"></span>
+      <span>Running: <strong id="runningCount">0</strong></span>
+    </div>
+    <div class="status-item">
+      <span class="status-dot success"></span>
+      <span>Success: <strong id="successCount">0</strong></span>
+    </div>
+    <div class="status-item">
+      <span class="status-dot failure"></span>
+      <span>Failed: <strong id="failedCount">0</strong></span>
+    </div>
+    <div class="status-item">
+      <span class="status-dot queued"></span>
+      <span>Queued: <strong id="queuedCount">0</strong></span>
+    </div>
+  </div>
+
+  <div class="main-content" id="mainContent">
+    <div class="empty-state">
+      <h2>Loading...</h2>
+      <p>Fetching workflow runs from your repositories</p>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="tokenModal">
+    <div class="modal">
+      <h2>Setup GitHub Token</h2>
+      <p>Enter your GitHub Personal Access Token with <code>repo</code> and <code>actions:read</code> scopes to monitor your workflow runs.</p>
+      <div class="error-message hidden" id="tokenError"></div>
+      <label for="tokenInput">Personal Access Token</label>
+      <input type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxx">
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" id="cancelTokenBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveTokenBtn">Save Token</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const GITHUB_API = 'https://api.github.com';
+    const REFRESH_INTERVAL = 45000; // 45 seconds
+    const TIME_WINDOW_MINUTES = 30;
+
+    let token = localStorage.getItem('github_token');
+    let refreshTimer = null;
+
+    // DOM Elements
+    const mainContent = document.getElementById('mainContent');
+    const tokenModal = document.getElementById('tokenModal');
+    const tokenInput = document.getElementById('tokenInput');
+    const tokenError = document.getElementById('tokenError');
+    const saveTokenBtn = document.getElementById('saveTokenBtn');
+    const cancelTokenBtn = document.getElementById('cancelTokenBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const refreshIndicator = document.getElementById('refreshIndicator');
+    const runningCount = document.getElementById('runningCount');
+    const successCount = document.getElementById('successCount');
+    const failedCount = document.getElementById('failedCount');
+    const queuedCount = document.getElementById('queuedCount');
+
+    // Initialize
+    if (!token) {
+      showTokenModal();
+    } else {
+      startMonitoring();
+    }
+
+    // Event Listeners
+    saveTokenBtn.addEventListener('click', saveToken);
+    cancelTokenBtn.addEventListener('click', hideTokenModal);
+    settingsBtn.addEventListener('click', showTokenModal);
+    tokenInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') saveToken();
+    });
+
+    function showTokenModal() {
+      tokenModal.classList.remove('hidden');
+      tokenInput.value = token || '';
+      tokenError.classList.add('hidden');
+      tokenInput.focus();
+    }
+
+    function hideTokenModal() {
+      if (token) {
+        tokenModal.classList.add('hidden');
+      }
+    }
+
+    async function saveToken() {
+      const newToken = tokenInput.value.trim();
+      if (!newToken) {
+        showError('Please enter a token');
+        return;
+      }
+
+      // Validate token
+      try {
+        const response = await fetch(`${GITHUB_API}/user`, {
+          headers: {
+            'Authorization': `Bearer ${newToken}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Invalid token');
+        }
+
+        token = newToken;
+        localStorage.setItem('github_token', token);
+        tokenModal.classList.add('hidden');
+        startMonitoring();
+      } catch (error) {
+        showError('Invalid token. Please check and try again.');
+      }
+    }
+
+    function showError(message) {
+      tokenError.textContent = message;
+      tokenError.classList.remove('hidden');
+    }
+
+    function startMonitoring() {
+      fetchWorkflowRuns();
+      if (refreshTimer) clearInterval(refreshTimer);
+      refreshTimer = setInterval(fetchWorkflowRuns, REFRESH_INTERVAL);
+    }
+
+    async function fetchWorkflowRuns() {
+      refreshIndicator.textContent = 'Refreshing...';
+      refreshIndicator.classList.add('loading');
+
+      try {
+        // Get all repositories
+        const repos = await getAllRepos();
+
+        // Get time threshold
+        const timeThreshold = new Date(Date.now() - TIME_WINDOW_MINUTES * 60 * 1000);
+        const timeString = timeThreshold.toISOString();
+
+        // Fetch workflow runs for each repo
+        const allRuns = [];
+        const batchSize = 10;
+
+        for (let i = 0; i < repos.length; i += batchSize) {
+          const batch = repos.slice(i, i + batchSize);
+          const batchPromises = batch.map(repo => fetchRepoRuns(repo, timeString));
+          const batchResults = await Promise.all(batchPromises);
+          allRuns.push(...batchResults.flat());
+        }
+
+        // Group by repository
+        const grouped = groupByRepo(allRuns);
+
+        // Update counts
+        updateCounts(allRuns);
+
+        // Render
+        renderWorkflows(grouped);
+
+        // Update refresh indicator
+        const now = new Date();
+        refreshIndicator.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+        refreshIndicator.classList.remove('loading');
+      } catch (error) {
+        console.error('Error fetching workflow runs:', error);
+        refreshIndicator.textContent = 'Error refreshing';
+        refreshIndicator.classList.remove('loading');
+
+        if (error.message === 'Unauthorized') {
+          token = null;
+          localStorage.removeItem('github_token');
+          showTokenModal();
+        }
+      }
+    }
+
+    async function getAllRepos() {
+      const repos = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await fetch(`${GITHUB_API}/user/repos?per_page=100&page=${page}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+
+        if (response.status === 401) {
+          throw new Error('Unauthorized');
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        repos.push(...data);
+
+        hasMore = data.length === 100;
+        page++;
+      }
+
+      return repos;
+    }
+
+    async function fetchRepoRuns(repo, timeString) {
+      try {
+        const response = await fetch(
+          `${GITHUB_API}/repos/${repo.full_name}/actions/runs?created=>${timeString}&per_page=100`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          return [];
+        }
+
+        const data = await response.json();
+        return data.workflow_runs.map(run => ({
+          ...run,
+          repo_name: repo.full_name,
+          repo_url: repo.html_url
+        }));
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function groupByRepo(runs) {
+      const grouped = {};
+
+      runs.forEach(run => {
+        if (!grouped[run.repo_name]) {
+          grouped[run.repo_name] = {
+            name: run.repo_name,
+            url: run.repo_url,
+            runs: []
+          };
+        }
+        grouped[run.repo_name].runs.push(run);
+      });
+
+      // Sort runs within each repo by created_at
+      Object.values(grouped).forEach(repo => {
+        repo.runs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      });
+
+      // Sort repos by most recent activity
+      return Object.values(grouped).sort((a, b) => {
+        const aLatest = new Date(a.runs[0]?.created_at || 0);
+        const bLatest = new Date(b.runs[0]?.created_at || 0);
+        return bLatest - aLatest;
+      });
+    }
+
+    function updateCounts(runs) {
+      const counts = {
+        running: 0,
+        success: 0,
+        failure: 0,
+        queued: 0
+      };
+
+      runs.forEach(run => {
+        if (run.status === 'queued') {
+          counts.queued++;
+        } else if (run.status === 'in_progress') {
+          counts.running++;
+        } else if (run.status === 'completed') {
+          if (run.conclusion === 'success') {
+            counts.success++;
+          } else if (run.conclusion === 'failure') {
+            counts.failure++;
+          }
+        }
+      });
+
+      runningCount.textContent = counts.running;
+      successCount.textContent = counts.success;
+      failedCount.textContent = counts.failure;
+      queuedCount.textContent = counts.queued;
+    }
+
+    function renderWorkflows(grouped) {
+      if (grouped.length === 0) {
+        mainContent.innerHTML = `
+          <div class="empty-state">
+            <h2>No workflow runs found</h2>
+            <p>No workflow runs in the last ${TIME_WINDOW_MINUTES} minutes across your repositories</p>
+          </div>
+        `;
+        return;
+      }
+
+      mainContent.innerHTML = grouped.map(repo => `
+        <div class="repo-group">
+          <div class="repo-header">
+            <span>&#128193;</span>
+            <a href="${repo.url}" target="_blank">${repo.name}</a>
+          </div>
+          ${repo.runs.map(run => renderWorkflowRun(run)).join('')}
+        </div>
+      `).join('');
+    }
+
+    function renderWorkflowRun(run) {
+      const status = getRunStatus(run);
+      const timeAgo = getTimeAgo(new Date(run.created_at));
+
+      return `
+        <div class="workflow-run">
+          <div class="workflow-status ${status}"></div>
+          <div class="workflow-info">
+            <div class="workflow-name">
+              <a href="${run.html_url}" target="_blank">${run.name}</a>
+            </div>
+            <div class="workflow-meta">
+              <span>${run.head_branch}</span>
+              <span>#${run.run_number}</span>
+            </div>
+          </div>
+          <div class="workflow-time">${timeAgo}</div>
+        </div>
+      `;
+    }
+
+    function getRunStatus(run) {
+      if (run.status === 'queued') return 'queued';
+      if (run.status === 'in_progress') return 'in_progress';
+      if (run.status === 'completed') {
+        if (run.conclusion === 'success') return 'success';
+        if (run.conclusion === 'failure') return 'failure';
+        if (run.conclusion === 'cancelled') return 'cancelled';
+      }
+      return 'queued';
+    }
+
+    function getTimeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+
+      if (seconds < 60) return 'Just now';
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+      return `${Math.floor(seconds / 86400)}d ago`;
+    }
+  </script>
+</body>
+</html>

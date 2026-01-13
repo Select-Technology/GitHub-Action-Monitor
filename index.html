@@ -393,12 +393,56 @@
     .toggle input:checked + .toggle-slider:before {
       transform: translateX(20px);
     }
+
+    .time-slider-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      -webkit-app-region: no-drag;
+    }
+
+    .time-slider-label {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      white-space: nowrap;
+    }
+
+    .time-slider {
+      -webkit-appearance: none;
+      width: 100px;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.3);
+      outline: none;
+    }
+
+    .time-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #e87722;
+      cursor: pointer;
+    }
+
+    .time-slider::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #e87722;
+      cursor: pointer;
+      border: none;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>GitHub Actions Monitor</h1>
     <div class="header-right">
+      <div class="time-slider-container">
+        <span class="time-slider-label" id="timeSliderLabel">30m</span>
+        <input type="range" class="time-slider" id="timeSlider" min="30" max="180" step="15" value="30">
+      </div>
       <span class="refresh-indicator" id="refreshIndicator">Last updated: --:--</span>
       <button class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
     </div>
@@ -454,9 +498,9 @@
   <script>
     const GITHUB_API = 'https://api.github.com';
     const REFRESH_INTERVAL = 45000; // 45 seconds
-    const TIME_WINDOW_MINUTES = 30;
 
     let token = localStorage.getItem('github_token');
+    let timeWindowMinutes = parseInt(localStorage.getItem('time_window_minutes')) || 30;
     let refreshTimer = null;
 
     // DOM Elements
@@ -481,6 +525,22 @@
     }
 
     const autoLaunchToggle = document.getElementById('autoLaunchToggle');
+    const timeSlider = document.getElementById('timeSlider');
+    const timeSliderLabel = document.getElementById('timeSliderLabel');
+
+    // Initialize time slider
+    timeSlider.value = timeWindowMinutes;
+    updateTimeSliderLabel();
+
+    function updateTimeSliderLabel() {
+      const mins = parseInt(timeSlider.value);
+      if (mins >= 60) {
+        const hours = mins / 60;
+        timeSliderLabel.textContent = hours === 1 ? '1hr' : `${hours}hrs`;
+      } else {
+        timeSliderLabel.textContent = `${mins}m`;
+      }
+    }
 
     // Event Listeners
     saveTokenBtn.addEventListener('click', saveToken);
@@ -492,6 +552,16 @@
     autoLaunchToggle.addEventListener('change', async (e) => {
       if (window.electronAPI) {
         await window.electronAPI.setAutoLaunch(e.target.checked);
+      }
+    });
+    timeSlider.addEventListener('input', () => {
+      updateTimeSliderLabel();
+    });
+    timeSlider.addEventListener('change', () => {
+      timeWindowMinutes = parseInt(timeSlider.value);
+      localStorage.setItem('time_window_minutes', timeWindowMinutes);
+      if (token) {
+        fetchWorkflowRuns();
       }
     });
 
@@ -563,7 +633,7 @@
         const repos = await getAllRepos();
 
         // Get time threshold
-        const timeThreshold = new Date(Date.now() - TIME_WINDOW_MINUTES * 60 * 1000);
+        const timeThreshold = new Date(Date.now() - timeWindowMinutes * 60 * 1000);
         const timeString = timeThreshold.toISOString();
 
         // Fetch workflow runs for each repo
@@ -721,7 +791,7 @@
         mainContent.innerHTML = `
           <div class="empty-state">
             <h2>No workflow runs found</h2>
-            <p>No workflow runs in the last ${TIME_WINDOW_MINUTES} minutes across your repositories</p>
+            <p>No workflow runs in the last ${timeWindowMinutes} minutes across your repositories</p>
           </div>
         `;
         return;

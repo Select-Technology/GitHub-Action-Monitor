@@ -2,6 +2,9 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const AutoLaunch = require('auto-launch');
 
+// Set a consistent userData path so localStorage persists
+app.setPath('userData', path.join(app.getPath('appData'), 'GitHubActionsMonitor'));
+
 const autoLauncher = new AutoLaunch({
   name: 'GitHub Actions Monitor',
   path: app.getPath('exe')

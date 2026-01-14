@@ -433,6 +433,90 @@
       cursor: pointer;
       border: none;
     }
+
+    /* Repo filter modal */
+    .modal.wide {
+      max-width: 600px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .repo-list-container {
+      flex: 1;
+      overflow-y: auto;
+      margin: 16px 0;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      max-height: 400px;
+    }
+
+    .repo-list-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid #0f3460;
+      cursor: pointer;
+    }
+
+    .repo-list-item:last-child {
+      border-bottom: none;
+    }
+
+    .repo-list-item:hover {
+      background: rgba(232, 119, 34, 0.1);
+    }
+
+    .repo-list-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin-right: 12px;
+      cursor: pointer;
+      accent-color: #e87722;
+    }
+
+    .repo-list-item label {
+      flex: 1;
+      cursor: pointer;
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .repo-filter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .repo-filter-header h2 {
+      margin: 0;
+    }
+
+    .refresh-repos-btn {
+      background: none;
+      border: 1px solid #0f3460;
+      color: rgba(255, 255, 255, 0.7);
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .refresh-repos-btn:hover {
+      border-color: #e87722;
+      color: #e87722;
+    }
+
+    .repo-search {
+      margin-bottom: 0;
+    }
+
+    .selected-count {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
@@ -444,6 +528,7 @@
         <input type="range" class="time-slider" id="timeSlider" min="30" max="180" step="15" value="30">
       </div>
       <span class="refresh-indicator" id="refreshIndicator">Last updated: --:--</span>
+      <button class="settings-btn" id="repoFilterBtn" title="Filter Repositories">&#128202;</button>
       <button class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
     </div>
   </div>
@@ -495,12 +580,36 @@
     </div>
   </div>
 
+  <div class="modal-overlay hidden" id="repoFilterModal">
+    <div class="modal wide">
+      <div class="repo-filter-header">
+        <h2>Filter Repositories</h2>
+        <button class="refresh-repos-btn" id="refreshReposBtn">Refresh List</button>
+      </div>
+      <p>Select which repositories to monitor. Only selected repos will be checked for workflow runs.</p>
+      <input type="text" class="repo-search" id="repoSearch" placeholder="Search repositories...">
+      <div class="repo-list-container" id="repoListContainer">
+        <div class="empty-state">Loading repositories...</div>
+      </div>
+      <div class="selected-count" id="selectedCount">0 repositories selected</div>
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" id="cancelRepoFilterBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveRepoFilterBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const GITHUB_API = 'https://api.github.com';
-    const REFRESH_INTERVAL = 45000; // 45 seconds
+    const REFRESH_INTERVAL = 90000; // 90 seconds
+    const REPO_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
     let token = localStorage.getItem('github_token');
     let timeWindowMinutes = parseInt(localStorage.getItem('time_window_minutes')) || 30;
+    let selectedRepos = JSON.parse(localStorage.getItem('selected_repos')) || [];
+    let cachedRepos = JSON.parse(localStorage.getItem('cached_repos')) || [];
+    let repoCacheTime = parseInt(localStorage.getItem('repo_cache_time')) || 0;
+    let tempSelectedRepos = []; // For the filter modal
     let refreshTimer = null;
 
     // DOM Elements
@@ -527,6 +636,14 @@
     const autoLaunchToggle = document.getElementById('autoLaunchToggle');
     const timeSlider = document.getElementById('timeSlider');
     const timeSliderLabel = document.getElementById('timeSliderLabel');
+    const repoFilterBtn = document.getElementById('repoFilterBtn');
+    const repoFilterModal = document.getElementById('repoFilterModal');
+    const repoListContainer = document.getElementById('repoListContainer');
+    const repoSearch = document.getElementById('repoSearch');
+    const selectedCountEl = document.getElementById('selectedCount');
+    const refreshReposBtn = document.getElementById('refreshReposBtn');
+    const saveRepoFilterBtn = document.getElementById('saveRepoFilterBtn');
+    const cancelRepoFilterBtn = document.getElementById('cancelRepoFilterBtn');
 
     // Initialize time slider
     timeSlider.value = timeWindowMinutes;
@@ -565,6 +682,127 @@
       }
     });
 
+    // Repo filter event listeners
+    repoFilterBtn.addEventListener('click', showRepoFilterModal);
+    cancelRepoFilterBtn.addEventListener('click', () => repoFilterModal.classList.add('hidden'));
+    saveRepoFilterBtn.addEventListener('click', saveRepoFilter);
+    refreshReposBtn.addEventListener('click', () => loadRepoList(true));
+    repoSearch.addEventListener('input', filterRepoList);
+
+    async function showRepoFilterModal() {
+      repoFilterModal.classList.remove('hidden');
+      tempSelectedRepos = [...selectedRepos];
+      repoSearch.value = '';
+      await loadRepoList(false);
+    }
+
+    async function loadRepoList(forceRefresh) {
+      const now = Date.now();
+      const cacheValid = cachedRepos.length > 0 && (now - repoCacheTime) < REPO_CACHE_DURATION;
+
+      if (!cacheValid || forceRefresh) {
+        repoListContainer.innerHTML = '<div class="empty-state">Loading repositories...</div>';
+        try {
+          cachedRepos = await fetchAllRepos();
+          repoCacheTime = now;
+          localStorage.setItem('cached_repos', JSON.stringify(cachedRepos));
+          localStorage.setItem('repo_cache_time', repoCacheTime.toString());
+        } catch (error) {
+          repoListContainer.innerHTML = '<div class="empty-state">Error loading repositories</div>';
+          return;
+        }
+      }
+
+      renderRepoList(cachedRepos);
+    }
+
+    function renderRepoList(repos) {
+      const searchTerm = repoSearch.value.toLowerCase();
+      const filtered = repos.filter(r => r.full_name.toLowerCase().includes(searchTerm));
+
+      if (filtered.length === 0) {
+        repoListContainer.innerHTML = '<div class="empty-state">No repositories found</div>';
+        return;
+      }
+
+      repoListContainer.innerHTML = filtered.map(repo => {
+        const checked = tempSelectedRepos.includes(repo.full_name) ? 'checked' : '';
+        return `
+          <div class="repo-list-item" data-repo="${repo.full_name}">
+            <input type="checkbox" id="repo-${repo.id}" ${checked}>
+            <label for="repo-${repo.id}">${repo.full_name}</label>
+          </div>
+        `;
+      }).join('');
+
+      // Add click handlers
+      repoListContainer.querySelectorAll('.repo-list-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          if (e.target.tagName !== 'INPUT') {
+            const checkbox = item.querySelector('input');
+            checkbox.checked = !checkbox.checked;
+          }
+          const repoName = item.dataset.repo;
+          if (item.querySelector('input').checked) {
+            if (!tempSelectedRepos.includes(repoName)) {
+              tempSelectedRepos.push(repoName);
+            }
+          } else {
+            tempSelectedRepos = tempSelectedRepos.filter(r => r !== repoName);
+          }
+          updateSelectedCount();
+        });
+      });
+
+      updateSelectedCount();
+    }
+
+    function filterRepoList() {
+      renderRepoList(cachedRepos);
+    }
+
+    function updateSelectedCount() {
+      const count = tempSelectedRepos.length;
+      selectedCountEl.textContent = count === 0
+        ? 'All repositories (no filter)'
+        : `${count} repositor${count === 1 ? 'y' : 'ies'} selected`;
+    }
+
+    function saveRepoFilter() {
+      selectedRepos = [...tempSelectedRepos];
+      localStorage.setItem('selected_repos', JSON.stringify(selectedRepos));
+      repoFilterModal.classList.add('hidden');
+      if (token) {
+        fetchWorkflowRuns();
+      }
+    }
+
+    async function fetchAllRepos() {
+      const repos = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await fetch(`${GITHUB_API}/user/repos?per_page=100&page=${page}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        repos.push(...data);
+        hasMore = data.length === 100;
+        page++;
+      }
+
+      return repos.sort((a, b) => a.full_name.localeCompare(b.full_name));
+    }
+
     async function showTokenModal() {
       tokenModal.classList.remove('hidden');
       tokenInput.value = token || '';
@@ -600,8 +838,17 @@
           }
         });
 
-        if (!response.ok) {
-          throw new Error('Invalid token');
+        if (response.status === 401) {
+          showError('Invalid token. Please check and try again.');
+          return;
+        }
+
+        if (response.status === 403) {
+          // Rate limited but token is valid - accept it
+          console.warn('Rate limited during token validation, accepting token');
+        } else if (!response.ok) {
+          showError(`GitHub API error: ${response.status}`);
+          return;
         }
 
         token = newToken;
@@ -609,7 +856,7 @@
         tokenModal.classList.add('hidden');
         startMonitoring();
       } catch (error) {
-        showError('Invalid token. Please check and try again.');
+        showError('Network error. Please check your connection.');
       }
     }
 
@@ -629,8 +876,25 @@
       refreshIndicator.classList.add('loading');
 
       try {
-        // Get all repositories
-        const repos = await getAllRepos();
+        // Get repos to check - either selected repos or prompt to select
+        let reposToCheck = [];
+
+        if (selectedRepos.length > 0) {
+          // Use selected repos
+          reposToCheck = selectedRepos.map(fullName => ({ full_name: fullName, html_url: `https://github.com/${fullName}` }));
+        } else {
+          // No repos selected - show empty state prompting to select
+          mainContent.innerHTML = `
+            <div class="empty-state">
+              <h2>No repositories selected</h2>
+              <p>Click the filter icon in the header to select which repositories to monitor</p>
+            </div>
+          `;
+          refreshIndicator.textContent = 'No repos selected';
+          refreshIndicator.classList.remove('loading');
+          updateCounts([]);
+          return;
+        }
 
         // Get time threshold
         const timeThreshold = new Date(Date.now() - timeWindowMinutes * 60 * 1000);
@@ -638,14 +902,9 @@
 
         // Fetch workflow runs for each repo
         const allRuns = [];
-        const batchSize = 10;
-
-        for (let i = 0; i < repos.length; i += batchSize) {
-          const batch = repos.slice(i, i + batchSize);
-          const batchPromises = batch.map(repo => fetchRepoRuns(repo, timeString));
-          const batchResults = await Promise.all(batchPromises);
-          allRuns.push(...batchResults.flat());
-        }
+        const batchPromises = reposToCheck.map(repo => fetchRepoRuns(repo, timeString));
+        const batchResults = await Promise.all(batchPromises);
+        allRuns.push(...batchResults.flat());
 
         // Group by repository
         const grouped = groupByRepo(allRuns);
@@ -671,37 +930,6 @@
           showTokenModal();
         }
       }
-    }
-
-    async function getAllRepos() {
-      const repos = [];
-      let page = 1;
-      let hasMore = true;
-
-      while (hasMore) {
-        const response = await fetch(`${GITHUB_API}/user/repos?per_page=100&page=${page}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github.v3+json'
-          }
-        });
-
-        if (response.status === 401) {
-          throw new Error('Unauthorized');
-        }
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        repos.push(...data);
-
-        hasMore = data.length === 100;
-        page++;
-      }
-
-      return repos;
     }
 
     async function fetchRepoRuns(repo, timeString) {

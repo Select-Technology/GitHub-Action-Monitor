@@ -1,6 +1,6 @@
 {
   "name": "gitview",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "A comprehensive GitHub desktop client for monitoring Actions, managing repositories, pull requests, issues, and more",
   "main": "main.js",
   "scripts": {

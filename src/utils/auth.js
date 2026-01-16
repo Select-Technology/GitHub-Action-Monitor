@@ -10,10 +10,9 @@ const storage = require('../utils/storage');
  */
 class AuthService {
   constructor() {
-    // These should be environment variables in production
-    // For now, using placeholder - user will need to register their own OAuth app
-    this.clientId = process.env.GITHUB_CLIENT_ID || 'YOUR_CLIENT_ID';
-    this.clientSecret = process.env.GITHUB_CLIENT_SECRET || null;
+    // OAuth credentials - hardcoded for packaged app distribution
+    this.clientId = 'Ov23libY99pSHCALp1Ul';
+    this.clientSecret = '97e6cf3c5de9b171ca090d842af488980d14d631';
     this.redirectUri = 'http://127.0.0.1:3000/callback';
     this.callbackServer = null;
     

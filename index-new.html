@@ -1,0 +1,3545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitView</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      height: 100vh;
+      -webkit-app-region: drag;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    button, input, a, .tab {
+      -webkit-app-region: no-drag;
+    }
+
+    .main-content, .view {
+      -webkit-app-region: no-drag;
+    }
+
+    #main-app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #main-app.hidden {
+      display: none;
+    }
+
+    /* ==================== Header ==================== */
+    .header {
+      background: #3c1053;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.3);
+    }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px 8px;
+      transition: color 0.2s;
+    }
+
+    .btn-icon:hover {
+      color: #fff;
+    }
+
+    /* ==================== Auth Screen ==================== */
+    .auth-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      padding: 40px;
+    }
+
+    .auth-card {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 48px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      border: 1px solid #0f3460;
+    }
+
+    .auth-card h2 {
+      font-size: 28px;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+
+    .auth-card p {
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    .btn-primary {
+      background: #e87722;
+      color: #fff;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary:hover {
+      background: #d16619;
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: rgba(255,255,255,0.7);
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 16px;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      border-color: rgba(255,255,255,0.5);
+      color: #fff;
+    }
+
+    /* ==================== Navigation Tabs ==================== */
+    .nav-tabs {
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+      display: flex;
+      gap: 4px;
+      padding: 0 24px;
+      flex-shrink: 0;
+    }
+
+    .tab {
+      padding: 12px 20px;
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab:hover {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab.active {
+      color: #e87722;
+      border-bottom-color: #e87722;
+    }
+
+    /* ==================== Main Content Area ==================== */
+    .main-content {
+      flex: 1;
+      overflow: hidden;
+      padding: 24px;
+      min-height: 0;
+    }
+
+    .view {
+      display: none;
+      height: 100%;
+    }
+
+    .view.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ==================== Phase 8: Advanced Features Styling ==================== */
+    
+    /* Settings Dialog */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #eee;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0f3460;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      color: #eee;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: #e87722;
+    }
+
+    .form-control::placeholder {
+      color: rgba(255,255,255,0.4);
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-weight: 400;
+      margin-bottom: 4px;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .form-group small {
+      display: block;
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #0f3460;
+    }
+
+    /* Keyboard Shortcuts Display */
+    .shortcuts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .shortcut-group h3 {
+      color: #e87722;
+      font-size: 16px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #0f3460;
+    }
+
+    .shortcut-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+    }
+
+    .shortcut-keys {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .shortcut-keys kbd {
+      background: #0f3460;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #eee;
+      min-width: 32px;
+      text-align: center;
+    }
+
+    .shortcut-desc {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+    }
+
+    /* Advanced Search */
+    .search-filters {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .filter-group label {
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      font-weight: 500;
+    }
+
+    .filter-group .form-control {
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+
+    .search-results {
+      margin-top: 24px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .search-result-item {
+      background: #0f3460;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: start;
+      gap: 12px;
+    }
+
+    .search-result-item:hover {
+      background: rgba(232, 119, 34, 0.1);
+      border-color: #e87722;
+    }
+
+    .search-result-icon {
+      font-size: 18px;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .search-result-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .search-result-title {
+      font-weight: 600;
+      color: #eee;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .search-result-number {
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+    }
+
+    .search-result-meta {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 4px;
+    }
+
+    .search-result-repo {
+      color: #e87722;
+      font-weight: 500;
+    }
+
+    .search-empty {
+      text-align: center;
+      padding: 40px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* Command Palette */
+    .command-input {
+      width: 100%;
+      padding: 16px 20px;
+      background: #0f3460;
+      border: none;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      color: #eee;
+      font-size: 16px;
+      font-family: inherit;
+    }
+
+    .command-input:focus {
+      outline: none;
+      border-bottom-color: #e87722;
+    }
+
+    .command-input::placeholder {
+      color: rgba(255,255,255,0.4);
+    }
+
+    .command-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .command-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .command-item:hover,
+    .command-item.selected {
+      background: rgba(232, 119, 34, 0.1);
+    }
+
+    .command-icon {
+      font-size: 18px;
+      width: 24px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .command-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .command-name {
+      color: #eee;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .command-description {
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .command-shortcut {
+      color: rgba(255,255,255,0.5);
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
+      background: rgba(255,255,255,0.1);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .command-empty {
+      text-align: center;
+      padding: 40px;
+      color: rgba(255,255,255,0.5);
+      font-size: 14px;
+    }
+
+    /* Workflow Trigger Dialog */
+    #workflow-name-display {
+      background: #0f3460;
+      cursor: not-allowed;
+      opacity: 0.8;
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* Modal Enhancements for Phase 8 */
+    .modal-dialog {
+      animation: slideDown 0.2s ease-out;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Scrollbar Styling for dialogs */
+    .search-results::-webkit-scrollbar,
+    .command-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .search-results::-webkit-scrollbar-track,
+    .command-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .search-results::-webkit-scrollbar-thumb,
+    .command-list::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+    }
+
+    .search-results::-webkit-scrollbar-thumb:hover,
+    .command-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* Status badges in search results */
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-badge.open {
+      background: rgba(46, 204, 113, 0.2);
+      color: #2ecc71;
+    }
+
+    .status-badge.closed {
+      background: rgba(231, 76, 60, 0.2);
+      color: #e74c3c;
+    }
+
+    .status-badge.merged {
+      background: rgba(155, 89, 182, 0.2);
+      color: #9b59b6;
+    }
+
+    /* ==================== Repository Selector ==================== */
+    .repo-selector-controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .repo-selector-controls .form-control {
+      flex: 1;
+    }
+
+    .repo-selector-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .repo-selector-actions .btn-secondary {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    .repo-list {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      background: #0b1929;
+    }
+
+    .repo-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #0f3460;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .repo-item:last-child {
+      border-bottom: none;
+    }
+
+    .repo-item:hover {
+      background: rgba(232, 119, 34, 0.1);
+    }
+
+    .repo-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .repo-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .repo-item-name {
+      font-weight: 600;
+      color: #eee;
+      margin-bottom: 2px;
+    }
+
+    .repo-item-meta {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      display: flex;
+      gap: 12px;
+    }
+
+    .repo-item.hidden {
+      display: none;
+    }
+
+    .repo-selector-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #0f3460;
+    }
+
+    #repo-count {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+    }
+
+    /* ==================== Status Bar ==================== */
+    .status-bar {
+      background: #16213e;
+      padding: 12px 24px;
+      display: flex;
+      gap: 24px;
+      border-bottom: 1px solid #0f3460;
+      flex-shrink: 0;
+      margin-bottom: 16px;
+    }
+
+    #workflow-runs {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .status-dot.running {
+      background: #3498db;
+      animation: pulse 1.5s infinite;
+    }
+
+    .status-dot.success {
+      background: #27ae60;
+    }
+
+    .status-dot.failure {
+      background: #e74c3c;
+    }
+
+    .status-dot.queued {
+      background: #f39c12;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ==================== Repository List ==================== */
+    .repo-card {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+    }
+
+    .repo-card:hover {
+      border-color: #e87722;
+    }
+
+    .repo-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .repo-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .repo-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 13px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: transparent;
+      color: rgba(255,255,255,0.8);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-small:hover {
+      border-color: #e87722;
+      color: #e87722;
+    }
+
+    /* ==================== Empty State ==================== */
+    .empty-state {
+      text-align: center;
+      padding: 80px 40px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.3;
+    }
+
+    .empty-state h3 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      color: rgba(255,255,255,0.7);
+    }
+
+    /* ==================== Loading Spinner ==================== */
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #e87722;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ==================== Utilities ==================== */
+    .text-muted {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+    }
+
+    .mb-2 {
+      margin-bottom: 16px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ==================== Scrollbar ==================== */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #16213e;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #0f3460;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #e87722;
+    }
+
+    /* ==================== Modal ==================== */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+    }
+
+    .modal-content {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 12px;
+      z-index: 1001;
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #0f3460;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      font-size: 20px;
+      color: #fff;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    /* ==================== Log Viewer ==================== */
+    .log-viewer {
+      width: 1200px;
+    }
+
+    .log-viewer .modal-body {
+      display: flex;
+      gap: 16px;
+      padding: 0;
+    }
+
+    .log-sidebar {
+      width: 250px;
+      background: #1a1a2e;
+      border-right: 1px solid #0f3460;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .job-item {
+      padding: 12px;
+      margin-bottom: 8px;
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .job-item:hover {
+      border-color: #e87722;
+    }
+
+    .job-item.active {
+      border-color: #e87722;
+      background: rgba(232, 119, 34, 0.1);
+    }
+
+    .job-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .job-name {
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .job-meta {
+      font-size: 12px;
+    }
+
+    .log-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .log-toolbar {
+      padding: 16px;
+      border-bottom: 1px solid #0f3460;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 8px 12px;
+      background: #1a1a2e;
+      border: 1px solid #0f3460;
+      border-radius: 4px;
+      color: #eee;
+      font-size: 14px;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .log-display {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .log-info {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .log-info h3 {
+      margin-bottom: 12px;
+    }
+
+    /* ==================== Artifact Browser ==================== */
+    .artifact-browser {
+      width: 700px;
+    }
+
+    .artifact-list {
+      min-height: 300px;
+    }
+
+    .artifact-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: #1a1a2e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+
+    .artifact-item.expired {
+      opacity: 0.6;
+    }
+
+    .artifact-icon {
+      font-size: 32px;
+    }
+
+    .artifact-info {
+      flex: 1;
+    }
+
+    .artifact-name {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .artifact-meta {
+      display: flex;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .expired-text {
+      color: #e74c3c !important;
+    }
+
+    .artifact-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ==================== Action Buttons ==================== */
+    .run-actions {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+    }
+
+    .btn-action {
+      padding: 4px 10px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: transparent;
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-action:hover:not(:disabled) {
+      border-color: #e87722;
+      color: #e87722;
+    }
+
+    .btn-action:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .loading-container {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .error-message {
+      text-align: center;
+      padding: 40px;
+      color: #e74c3c;
+    }
+
+    /* ==================== PR Viewer ==================== */
+    .pr-viewer {
+      width: 90%;
+      max-width: 1200px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pr-tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid #0f3460;
+      margin-bottom: 16px;
+    }
+
+    .pr-tab {
+      padding: 12px 20px;
+      background: transparent;
+      color: #aaa;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      border-bottom: 2px solid transparent;
+    }
+
+    .pr-tab:hover {
+      color: #fff;
+      background: rgba(232, 119, 34, 0.1);
+    }
+
+    .pr-tab.active {
+      color: #e87722;
+      border-bottom-color: #e87722;
+    }
+
+    .pr-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 0;
+    }
+
+    .pr-info {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .pr-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .pr-stats {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+
+    .stat {
+      color: #aaa;
+    }
+
+    .pr-description {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .pr-description h3 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+    }
+
+    .markdown-content {
+      line-height: 1.6;
+      color: #ddd;
+    }
+
+    .pr-reviewers, .pr-labels {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .pr-reviewers h4, .pr-labels h4 {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+    }
+
+    .reviewer-list {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .reviewer-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: #0f3460;
+      border-radius: 16px;
+      font-size: 13px;
+    }
+
+    .label-list {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .label {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #000;
+    }
+
+    .badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .badge-open {
+      background: #28a745;
+      color: #fff;
+    }
+
+    .badge-merged {
+      background: #6f42c1;
+      color: #fff;
+    }
+
+    .badge-closed {
+      background: #dc3545;
+      color: #fff;
+    }
+
+    .badge-draft {
+      background: #6c757d;
+      color: #fff;
+    }
+
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .file-item {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .file-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #0f3460;
+    }
+
+    .file-header.added {
+      border-left: 3px solid #28a745;
+    }
+
+    .file-header.modified {
+      border-left: 3px solid #ffc107;
+    }
+
+    .file-header.removed {
+      border-left: 3px solid #dc3545;
+    }
+
+    .file-status {
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.1);
+    }
+
+    .file-path {
+      flex: 1;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #e87722;
+    }
+
+    .file-stats {
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    .file-patch {
+      padding: 12px 16px;
+    }
+
+    .patch-content {
+      margin-top: 12px;
+      padding: 12px;
+      background: #0d1117;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-x: auto;
+      color: #c9d1d9;
+    }
+
+    .pr-actions {
+      display: flex;
+      gap: 12px;
+      padding: 16px;
+      border-top: 1px solid #0f3460;
+      background: #0b1929;
+    }
+
+    .btn-primary {
+      padding: 10px 20px;
+      background: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #218838;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      padding: 10px 20px;
+      background: #6c757d;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+
+    .avatar-small {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+    }
+
+    /* ==================== Issue Viewer ==================== */
+    .issue-viewer {
+      width: 90%;
+      max-width: 1000px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .issue-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 0;
+    }
+
+    .issue-info {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .issue-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .issue-stats {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+
+    .issue-body {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .issue-body h3 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+    }
+
+    .issue-sidebar {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .sidebar-section {
+      margin-bottom: 16px;
+    }
+
+    .sidebar-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .sidebar-section h4 {
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      text-transform: uppercase;
+      color: #aaa;
+    }
+
+    .assignee-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .assignee-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .milestone-item {
+      padding: 8px;
+      background: #0f3460;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .issue-comments {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #0f3460;
+    }
+
+    .issue-comments h3 {
+      margin: 0 0 16px 0;
+      font-size: 16px;
+    }
+
+    .comment-item {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .comment-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .comment-body {
+      padding: 8px;
+      background: #0d1117;
+      border-radius: 4px;
+      line-height: 1.6;
+    }
+
+    .comment-form {
+      margin-top: 24px;
+      padding: 16px;
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+    }
+
+    .comment-form h4 {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+    }
+
+    .comment-form textarea {
+      width: 100%;
+      padding: 12px;
+      background: #0d1117;
+      border: 1px solid #0f3460;
+      border-radius: 4px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+    }
+
+    .comment-form textarea:focus {
+      outline: none;
+      border-color: #e87722;
+    }
+
+    .issue-actions {
+      display: flex;
+      gap: 12px;
+      padding: 16px;
+      border-top: 1px solid #0f3460;
+      background: #0b1929;
+    }
+
+    /* ==================== Notifications ==================== */
+    .notifications-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .notifications-header h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .notification-filters {
+      display: flex;
+      gap: 8px;
+    }
+
+    .filter-btn {
+      padding: 8px 16px;
+      background: transparent;
+      color: #aaa;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+      color: #fff;
+      border-color: #e87722;
+    }
+
+    .filter-btn.active {
+      background: #e87722;
+      color: #fff;
+      border-color: #e87722;
+    }
+
+    .notification-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .notification-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .notification-item:hover {
+      border-color: #e87722;
+      transform: translateX(4px);
+    }
+
+    .notification-item.unread {
+      border-left: 3px solid #e87722;
+      background: rgba(232, 119, 34, 0.05);
+    }
+
+    .notification-icon {
+      font-size: 24px;
+      min-width: 32px;
+      text-align: center;
+    }
+
+    .notification-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .notification-title {
+      font-weight: 500;
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .notification-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: #aaa;
+      flex-wrap: wrap;
+    }
+
+    .notification-repo {
+      color: #e87722;
+    }
+
+    .notification-reason {
+      padding: 2px 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      font-size: 11px;
+    }
+
+    .notification-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ==================== Repositories ==================== */
+    .repositories-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .repositories-header h2 {
+      margin: 0;
+    }
+
+    .repositories-controls {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .repo-filters {
+      display: flex;
+      gap: 8px;
+    }
+
+    .repo-filter-btn {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.7);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .repo-filter-btn:hover {
+      border-color: #e87722;
+    }
+
+    .repo-filter-btn.active {
+      background: #e87722;
+      color: #fff;
+      border-color: #e87722;
+    }
+
+    .repo-sort select {
+      padding: 8px 12px;
+    }
+
+    .repositories-header {
+      flex-shrink: 0;
+      margin-bottom: 16px;
+    }
+
+    #repositories-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 16px;
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    .repo-item {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 20px;
+      transition: all 0.2s;
+      display: grid;
+      grid-template-rows: auto 60px auto auto auto;
+      gap: 8px;
+    }
+
+    .repo-item:hover {
+      border-color: #e87722;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .repo-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .repo-name {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .repo-name a {
+      color: #e87722;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .repo-name a:hover {
+      color: #d16619;
+      text-decoration: underline;
+    }
+
+    .repo-visibility {
+      background: rgba(255,255,255,0.1);
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+    }
+
+    .repo-description {
+      color: rgba(255,255,255,0.7);
+      margin: 0;
+      line-height: 1.5;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      min-height: 0;
+    }
+
+    .repo-topics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-content: flex-start;
+      min-height: 28px;
+    }
+
+    .topic-tag {
+      background: rgba(232, 119, 34, 0.2);
+      color: #e87722;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      border: 1px solid rgba(232, 119, 34, 0.3);
+    }
+
+    .repo-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-self: end;
+    }
+
+    .repo-language {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+    }
+
+    .repo-stat {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+    }
+
+    .repo-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* ==================== Repository Detail View ==================== */
+    .repo-detail-header {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    .btn-back {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .btn-back:hover {
+      background: rgba(255,255,255,0.2);
+      border-color: #e87722;
+    }
+
+    .repo-detail-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .repo-detail-title h2 {
+      margin: 0;
+      font-size: 24px;
+      color: #e87722;
+    }
+
+    .repo-detail-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .repo-detail-info {
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+
+    .repo-detail-meta {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .local-path-indicator {
+      background: rgba(46, 204, 113, 0.2);
+      color: #2ecc71;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    .local-path-indicator.not-set {
+      background: rgba(231, 76, 60, 0.2);
+      color: #e74c3c;
+    }
+
+    .repo-detail-tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid #0f3460;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+
+    .repo-tab {
+      padding: 12px 20px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      font-size: 14px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .repo-tab:hover {
+      color: #fff;
+    }
+
+    .repo-tab.active {
+      color: #e87722;
+      border-bottom-color: #e87722;
+    }
+
+    .repo-detail-content {
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .repo-tab-content {
+      display: none;
+      height: 100%;
+      overflow-y: auto;
+    }
+
+    .repo-tab-content.active {
+      display: block;
+    }
+
+    /* Commit Graph */
+    .commit-graph-container {
+      display: flex;
+      gap: 16px;
+      height: 100%;
+    }
+
+    .commit-graph {
+      width: 120px;
+      flex-shrink: 0;
+      background: #16213e;
+      border-radius: 8px;
+      padding: 16px 8px;
+      overflow-y: auto;
+    }
+
+    .commit-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .commit-item {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 8px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .commit-item:hover {
+      border-color: #e87722;
+    }
+
+    .commit-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #e87722;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    .commit-dot.merge {
+      background: #9b59b6;
+    }
+
+    .commit-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .commit-message {
+      font-weight: 500;
+      margin-bottom: 8px;
+      word-break: break-word;
+    }
+
+    .commit-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      flex-wrap: wrap;
+    }
+
+    .commit-sha {
+      font-family: monospace;
+      background: rgba(255,255,255,0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .commit-branches {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .branch-tag {
+      background: rgba(46, 204, 113, 0.2);
+      color: #2ecc71;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .branch-tag.remote {
+      background: rgba(52, 152, 219, 0.2);
+      color: #3498db;
+    }
+
+    /* Branches */
+    .branches-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      height: 100%;
+    }
+
+    .branches-section {
+      background: #16213e;
+      border-radius: 8px;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .branches-section h3 {
+      margin: 0 0 16px 0;
+      font-size: 16px;
+    }
+
+    .branches-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .branch-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    .branch-item:hover {
+      background: rgba(255,255,255,0.1);
+    }
+
+    .branch-item.current {
+      border-left: 3px solid #2ecc71;
+    }
+
+    .branch-name {
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .branch-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    /* Files */
+    .files-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      height: 100%;
+    }
+
+    .files-section {
+      background: #16213e;
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .files-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+
+    .files-header h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .files-tree {
+      flex: 1;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .file-item:hover {
+      background: rgba(255,255,255,0.1);
+    }
+
+    .file-item.folder {
+      color: #f39c12;
+    }
+
+    .file-item.file {
+      color: rgba(255,255,255,0.8);
+    }
+
+    .file-indent {
+      display: inline-block;
+    }
+
+    .file-icon {
+      width: 16px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .folder-children {
+      /* Nested folder contents */
+    }
+
+    .file-item {
+      user-select: none;
+    }
+
+    .file-item .file-icon {
+      transition: transform 0.2s;
+    }
+
+    /* Actions Tab Styles */
+    .actions-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      height: 100%;
+    }
+
+    .actions-section {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .actions-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .actions-section-header h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .trigger-section {
+      flex-shrink: 0;
+    }
+
+    .runs-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .trigger-workflow-form .form-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .trigger-workflow-form .form-group {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    .trigger-workflow-form .form-group-btn {
+      flex: 0 0 auto;
+    }
+
+    .workflow-inputs {
+      margin-top: 16px;
+      padding: 16px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+    }
+
+    .workflow-inputs h4 {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+
+    .workflow-inputs .form-group {
+      margin-bottom: 12px;
+    }
+
+    .workflow-runs-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .workflow-run-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      transition: background 0.2s;
+    }
+
+    .workflow-run-item:hover {
+      background: rgba(0,0,0,0.3);
+    }
+
+    .workflow-run-status {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .workflow-run-status.success { background: rgba(46, 204, 113, 0.2); }
+    .workflow-run-status.failure { background: rgba(231, 76, 60, 0.2); }
+    .workflow-run-status.pending { background: rgba(241, 196, 15, 0.2); }
+    .workflow-run-status.cancelled { background: rgba(149, 165, 166, 0.2); }
+    .workflow-run-status.in_progress { background: rgba(52, 152, 219, 0.2); }
+
+    .workflow-run-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .workflow-run-name {
+      font-weight: 500;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .workflow-run-meta {
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .workflow-run-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .workflow-run-actions button {
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    /* Local Path Dialog */
+    .local-path-input-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .local-path-input-group input {
+      flex: 1;
+    }
+
+    .local-path-input-group button {
+      flex-shrink: 0;
+    }
+
+    /* Repository Settings */
+    .settings-section {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .settings-section h3 {
+      margin: 0 0 20px 0;
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: rgba(255,255,255,0.9);
+      font-weight: 500;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0f3460;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: #e87722;
+    }
+
+    .form-control::placeholder {
+      color: rgba(255,255,255,0.4);
+    }
+
+    .form-group small {
+      display: block;
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-weight: normal !important;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .danger-zone {
+      border-color: rgba(220, 38, 38, 0.3);
+    }
+
+    .danger-zone h3 {
+      color: #ef4444;
+    }
+
+    .danger-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn-danger {
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-danger:hover {
+      background: #b91c1c;
+    }
+
+    .btn-danger:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background: #0f3460;
+      border: 1px solid #16213e;
+      border-radius: 12px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      width: 90%;
+      max-width: 600px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px;
+      border-bottom: 1px solid #16213e;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,0.7);
+      font-size: 32px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+      color: #fff;
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    /* ==================== Insights & Analytics ==================== */
+    .insights-section {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .insights-section h3 {
+      margin: 0 0 20px 0;
+      color: #fff;
+      font-size: 20px;
+    }
+
+    .insights-subsection {
+      margin-bottom: 32px;
+    }
+
+    .insights-subsection:last-child {
+      margin-bottom: 0;
+    }
+
+    .insights-subsection h4 {
+      margin: 0 0 16px 0;
+      color: rgba(255,255,255,0.9);
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+    }
+
+    .stat-card {
+      background: #0f3460;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+      border-color: #e87722;
+      transform: translateY(-2px);
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #e87722;
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+    }
+
+    .activity-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .activity-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      background: #0f3460;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .activity-item:hover {
+      border-color: #e87722;
+      transform: translateX(4px);
+    }
+
+    .activity-icon {
+      font-size: 24px;
+      min-width: 32px;
+      text-align: center;
+    }
+
+    .activity-content {
+      flex: 1;
+    }
+
+    .activity-description {
+      color: rgba(255,255,255,0.9);
+      margin-bottom: 4px;
+    }
+
+    .activity-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    .activity-repo {
+      color: #e87722;
+    }
+
+    .repo-selector {
+      margin-bottom: 24px;
+    }
+
+    #repo-insights-content {
+      margin-top: 24px;
+    }
+
+    .list-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: #0f3460;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .list-item:hover {
+      border-color: #e87722;
+    }
+
+    .list-item-title {
+      color: rgba(255,255,255,0.9);
+    }
+
+    .list-item-badge {
+      background: rgba(232, 119, 34, 0.2);
+      color: #e87722;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      border: 1px solid rgba(232, 119, 34, 0.3);
+    }
+
+    .contributor-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .contributor-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+    }
+
+    .language-breakdown {
+      margin-top: 16px;
+    }
+
+    .language-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .language-bar-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .language-bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: rgba(255,255,255,0.8);
+    }
+
+    .language-bar {
+      height: 8px;
+      background: #0f3460;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .language-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #e87722, #d16619);
+      transition: width 0.3s ease;
+    }
+
+    .commit-activity-chart {
+      margin-top: 16px;
+    }
+
+    .activity-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 100px;
+      padding: 8px;
+      background: #0f3460;
+      border-radius: 6px;
+    }
+
+    .activity-bar {
+      flex: 1;
+      background: #e87722;
+      border-radius: 2px 2px 0 0;
+      min-height: 2px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .activity-bar:hover {
+      background: #d16619;
+      transform: scaleY(1.1);
+    }
+
+    /* File Viewer Modal */
+    .file-viewer-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 2000;
+      display: none;
+      flex-direction: column;
+    }
+
+    .file-viewer-modal.active {
+      display: flex;
+    }
+
+    .file-viewer-header {
+      background: #3c1053;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .file-viewer-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-family: monospace;
+      color: #fff;
+    }
+
+    .file-viewer-title .file-icon {
+      font-size: 18px;
+    }
+
+    .file-viewer-path {
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+    }
+
+    .file-viewer-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .file-viewer-close {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.7);
+      font-size: 24px;
+      cursor: pointer;
+      padding: 4px 8px;
+      line-height: 1;
+    }
+
+    .file-viewer-close:hover {
+      color: #fff;
+    }
+
+    .file-viewer-content {
+      flex: 1;
+      overflow: auto;
+      background: #1e1e2e;
+      -webkit-app-region: no-drag;
+    }
+
+    .file-viewer-content pre {
+      margin: 0;
+      padding: 16px;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      tab-size: 4;
+    }
+
+    .file-viewer-content code {
+      font-family: inherit;
+    }
+
+    .file-viewer-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .file-viewer-error {
+      padding: 40px;
+      text-align: center;
+      color: #e74c3c;
+    }
+
+    .line-numbers {
+      counter-reset: line;
+    }
+
+    .line-numbers code {
+      counter-increment: line;
+    }
+
+    .line-numbers code::before {
+      content: counter(line);
+      display: inline-block;
+      width: 3em;
+      margin-right: 1em;
+      text-align: right;
+      color: rgba(255,255,255,0.3);
+      border-right: 1px solid rgba(255,255,255,0.1);
+      padding-right: 1em;
+      user-select: none;
+    }
+  </style>
+  <!-- Highlight.js for syntax highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body>
+  <!-- Authentication Screen -->
+  <div id="auth-screen" class="auth-screen">
+    <div class="auth-card">
+      <h2>🚀 GitView</h2>
+      <p>Connect your GitHub account to monitor workflow runs, manage repositories, and stay on top of your development workflow.</p>
+      <button id="btn-connect-github" class="btn-primary">
+        <span>🔗</span> Connect with GitHub
+      </button>
+      <div class="text-muted" style="margin-top: 24px; font-size: 12px;">
+        Requires OAuth access to your GitHub account
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application -->
+  <div id="main-app" class="hidden">
+    <!-- Header -->
+    <div class="header">
+      <h1>GitView</h1>
+      <div class="header-right">
+        <div id="user-info" class="user-info hidden">
+          <img id="user-avatar" class="user-avatar" src="" alt="User">
+          <span id="user-name"></span>
+        </div>
+        <button id="btn-refresh" class="btn-icon" title="Refresh">🔄</button>
+        <button id="btn-filter" class="btn-icon" title="Select Repositories">🔍</button>
+        <button id="btn-settings" class="btn-icon" title="Settings">⚙️</button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="tab active" data-view="actions">
+        🚀 Actions
+      </button>
+      <button class="tab" data-view="repositories">
+        📁 Repositories
+      </button>
+      <button class="tab" data-view="pulls">
+        🔀 Pull Requests
+      </button>
+      <button class="tab" data-view="issues">
+        🐛 Issues
+      </button>
+      <button class="tab" data-view="notifications">
+        🔔 Notifications
+      </button>
+      <button class="tab" data-view="insights">
+        📊 Insights
+      </button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Actions View -->
+      <div id="view-actions" class="view active">
+        <div class="status-bar">
+          <div class="status-item">
+            <span class="status-dot running"></span>
+            <span>Running: <strong id="count-running">0</strong></span>
+          </div>
+          <div class="status-item">
+            <span class="status-dot success"></span>
+            <span>Success: <strong id="count-success">0</strong></span>
+          </div>
+          <div class="status-item">
+            <span class="status-dot failure"></span>
+            <span>Failure: <strong id="count-failure">0</strong></span>
+          </div>
+          <div class="status-item">
+            <span class="status-dot queued"></span>
+            <span>Queued: <strong id="count-queued">0</strong></span>
+          </div>
+        </div>
+        <div id="workflow-runs" class="mb-2">
+          <div class="empty-state">
+            <div class="empty-state-icon">🚀</div>
+            <h3>Loading workflow runs...</h3>
+            <p class="text-muted">Fetching recent activity from your repositories</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Repositories View -->
+      <div id="view-repositories" class="view">
+        <div class="repositories-header">
+          <h2>Repositories</h2>
+          <div class="repositories-controls">
+            <div class="repo-filters">
+              <button class="repo-filter-btn active" data-filter="all" onclick="filterRepositories('all')">All</button>
+              <button class="repo-filter-btn" data-filter="owner" onclick="filterRepositories('owner')">Owner</button>
+              <button class="repo-filter-btn" data-filter="member" onclick="filterRepositories('member')">Member</button>
+            </div>
+            <div class="repo-sort">
+              <select class="form-control" onchange="sortRepositories(this.value)">
+                <option value="updated">Recently Updated</option>
+                <option value="created">Recently Created</option>
+                <option value="pushed">Recently Pushed</option>
+                <option value="full_name">Name</option>
+              </select>
+            </div>
+            <button class="btn-primary" onclick="showCreateRepositoryDialog()">+ New Repository</button>
+          </div>
+        </div>
+        <div id="repositories-list"></div>
+      </div>
+
+      <!-- Repository Detail View -->
+      <div id="view-repo-detail" class="view">
+        <div class="repo-detail-header">
+          <button class="btn-back" onclick="closeRepoDetail()">← Back to Repositories</button>
+          <div class="repo-detail-title">
+            <h2 id="repo-detail-name">Repository Name</h2>
+            <span id="repo-detail-visibility" class="repo-visibility">🌐 Public</span>
+          </div>
+          <div class="repo-detail-actions">
+            <button class="btn-secondary" onclick="openRepoInBrowser()">🌐 View on GitHub</button>
+            <button class="btn-secondary" onclick="showLocalPathDialog()">📁 Set Local Path</button>
+            <button class="btn-secondary" onclick="refreshRepoDetail()">🔄 Refresh</button>
+          </div>
+        </div>
+        
+        <div class="repo-detail-info">
+          <p id="repo-detail-description" class="text-muted"></p>
+          <div class="repo-detail-meta">
+            <span id="repo-detail-language"></span>
+            <span id="repo-detail-stars"></span>
+            <span id="repo-detail-forks"></span>
+            <span id="repo-detail-local-path" class="local-path-indicator"></span>
+          </div>
+        </div>
+
+        <div class="repo-detail-tabs">
+          <button class="repo-tab active" data-tab="commits" onclick="switchRepoTab('commits')">📜 Commits</button>
+          <button class="repo-tab" data-tab="branches" onclick="switchRepoTab('branches')">🌿 Branches</button>
+          <button class="repo-tab" data-tab="files" onclick="switchRepoTab('files')">📄 Files</button>
+          <button class="repo-tab" data-tab="actions" onclick="switchRepoTab('actions')">⚡ Actions</button>
+        </div>
+
+        <div class="repo-detail-content">
+          <!-- Commits Tab -->
+          <div id="repo-tab-commits" class="repo-tab-content active">
+            <div class="commit-graph-container">
+              <div id="commit-graph" class="commit-graph"></div>
+              <div id="commit-list" class="commit-list"></div>
+            </div>
+          </div>
+
+          <!-- Branches Tab -->
+          <div id="repo-tab-branches" class="repo-tab-content">
+            <div class="branches-container">
+              <div class="branches-section">
+                <h3>🌿 Local Branches</h3>
+                <div id="local-branches-list" class="branches-list">
+                  <div class="empty-state">No local repository configured</div>
+                </div>
+              </div>
+              <div class="branches-section">
+                <h3>☁️ Remote Branches</h3>
+                <div id="remote-branches-list" class="branches-list"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Files Tab -->
+          <div id="repo-tab-files" class="repo-tab-content">
+            <div class="files-container">
+              <div class="files-section">
+                <div class="files-header">
+                  <h3>📁 Local Files</h3>
+                  <span id="local-files-path" class="text-muted"></span>
+                </div>
+                <div id="local-files-tree" class="files-tree">
+                  <div class="empty-state">No local repository configured</div>
+                </div>
+              </div>
+              <div class="files-section">
+                <div class="files-header">
+                  <h3>☁️ Remote Files</h3>
+                  <select id="remote-branch-select" class="form-control" onchange="loadRemoteFiles()">
+                    <option value="">Select branch...</option>
+                  </select>
+                </div>
+                <div id="remote-files-tree" class="files-tree"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions Tab -->
+          <div id="repo-tab-actions" class="repo-tab-content">
+            <div class="actions-container">
+              <!-- Trigger Workflow Section -->
+              <div class="actions-section trigger-section">
+                <div class="actions-section-header">
+                  <h3>🚀 Trigger Workflow</h3>
+                </div>
+                <div class="trigger-workflow-form">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Workflow</label>
+                      <select id="repo-workflow-select" class="form-control" onchange="onWorkflowSelect()">
+                        <option value="">Select workflow...</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Branch</label>
+                      <select id="repo-workflow-branch" class="form-control">
+                        <option value="">Select branch...</option>
+                      </select>
+                    </div>
+                    <div class="form-group form-group-btn">
+                      <button class="btn-primary" onclick="triggerRepoWorkflow()">▶️ Run Workflow</button>
+                    </div>
+                  </div>
+                  <div id="workflow-inputs-container" class="workflow-inputs" style="display: none;">
+                    <h4>Workflow Inputs</h4>
+                    <div id="workflow-inputs"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Workflow Runs Section -->
+              <div class="actions-section runs-section">
+                <div class="actions-section-header">
+                  <h3>📋 Recent Workflow Runs</h3>
+                  <button class="btn-secondary btn-sm" onclick="loadActionsTab()">🔄 Refresh</button>
+                </div>
+                <div id="repo-workflow-runs" class="workflow-runs-list">
+                  <div class="loading">Loading workflow runs...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pull Requests View -->
+      <div id="view-pulls" class="view">
+        <div id="pull-requests-view">
+          <div class="empty-state">
+            <div class="empty-state-icon">🔀</div>
+            <h3>Pull Requests</h3>
+            <p class="text-muted">Monitor and review pull requests across your repositories</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Issues View -->
+      <div id="view-issues" class="view">
+        <div id="issues-view">
+          <div class="empty-state">
+            <div class="empty-state-icon">🐛</div>
+            <h3>Issues</h3>
+            <p class="text-muted">Track and manage issues across your projects</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notifications View -->
+      <div id="view-notifications" class="view">
+        <div id="notifications-view">
+          <div class="empty-state">
+            <div class="empty-state-icon">🔔</div>
+            <h3>Notifications</h3>
+            <p class="text-muted">Stay updated with GitHub notifications</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Insights View -->
+      <div id="view-insights" class="view">
+        <div id="insights-dashboard"></div>
+      </div>
+    </div>
+
+    <!-- Create Repository Dialog -->
+    <div id="create-repo-dialog" class="modal-overlay">
+      <div class="modal-dialog" style="max-width: 600px;">
+        <div class="modal-header">
+          <h2>Create New Repository</h2>
+          <button class="modal-close" onclick="closeCreateRepositoryDialog()">×</button>
+        </div>
+        <div class="modal-body">
+          <form id="create-repo-form" onsubmit="event.preventDefault(); createRepository()">
+            <div class="form-group">
+              <label>Repository Name *</label>
+              <input type="text" name="name" class="form-control" required placeholder="my-awesome-repo">
+            </div>
+            
+            <div class="form-group">
+              <label>Description</label>
+              <textarea name="description" class="form-control" rows="3" placeholder="A short description of your repository"></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" name="private">
+                Private repository
+              </label>
+              <small>Make this repository private</small>
+            </div>
+            
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" name="autoInit" checked>
+                Initialize with README
+              </label>
+              <small>Recommended to make the repository cloneable immediately</small>
+            </div>
+            
+            <div class="form-group">
+              <label>.gitignore Template</label>
+              <select name="gitignoreTemplate" id="repo-gitignore" class="form-control">
+                <option value="">None</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>License</label>
+              <select name="licenseTemplate" id="repo-license" class="form-control">
+                <option value="">None</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Local Path (Optional)</label>
+              <div class="local-path-input-group">
+                <input type="text" name="localPath" id="create-repo-local-path" class="form-control" placeholder="C:\Users\...\Projects">
+                <button type="button" class="btn-secondary" onclick="browseCreateRepoPath()">Browse...</button>
+              </div>
+              <small>Select a folder where the repository will be cloned after creation</small>
+            </div>
+            
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Create Repository</button>
+              <button type="button" class="btn-secondary" onclick="closeCreateRepositoryDialog()">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Repository Settings Dialog -->
+    <div id="repo-settings-dialog" class="modal-overlay">
+      <div class="modal-dialog" style="max-width: 800px;">
+        <div class="modal-header">
+          <h2>Repository Settings</h2>
+          <button class="modal-close" onclick="closeRepositorySettingsDialog()">×</button>
+        </div>
+        <div class="modal-body">
+          <div id="repo-settings-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Dialog -->
+    <div id="settings-dialog" class="modal-overlay">
+      <div class="modal-dialog" style="max-width: 600px;">
+        <div class="modal-header">
+          <h2>⚙️ Settings</h2>
+          <button class="modal-close" onclick="closeSettingsDialog()">×</button>
+        </div>
+        <div class="modal-body">
+          <form id="settings-form" onsubmit="event.preventDefault(); applySettings()">
+            <div class="form-group">
+              <label>Auto-Refresh</label>
+              <label class="checkbox-label">
+                <input type="checkbox" name="autoRefresh" id="setting-auto-refresh">
+                Enable automatic refresh
+              </label>
+            </div>
+            
+            <div class="form-group">
+              <label>Refresh Interval</label>
+              <select name="refreshInterval" id="setting-refresh-interval" class="form-control">
+                <option value="15000">15 seconds</option>
+                <option value="30000">30 seconds</option>
+                <option value="60000">1 minute</option>
+                <option value="120000">2 minutes</option>
+                <option value="300000">5 minutes</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Theme</label>
+              <select name="theme" id="setting-theme" class="form-control">
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+                <option value="auto">Auto</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Default View</label>
+              <select name="defaultView" id="setting-default-view" class="form-control">
+                <option value="actions">Actions</option>
+                <option value="repositories">Repositories</option>
+                <option value="pullRequests">Pull Requests</option>
+                <option value="issues">Issues</option>
+                <option value="notifications">Notifications</option>
+                <option value="insights">Insights</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Notifications</label>
+              <label class="checkbox-label">
+                <input type="checkbox" name="notifications" id="setting-notifications">
+                Enable desktop notifications
+              </label>
+            </div>
+            
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Apply Settings</button>
+              <button type="button" class="btn-secondary" onclick="closeSettingsDialog()">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Dialog -->
+    <div id="shortcuts-dialog" class="modal-overlay">
+      <div class="modal-dialog" style="max-width: 700px;">
+        <div class="modal-header">
+          <h2>⌨️ Keyboard Shortcuts</h2>
+          <button class="modal-close" onclick="closeKeyboardShortcuts()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="shortcuts-list">
+            <div class="shortcut-group">
+              <h3>Navigation</h3>
+              <div class="shortcut-item">
+                <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>1</kbd></span>
+                <span class="shortcut-desc">Go to Actions</span>
+              </div>
+              <div class="shortcut-item">
+                <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>2</kbd></span>
+                <span class="shortcut-desc">Go to Repositories</span>
+              </div>
+              <div class="shortcut-item">
+                <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>3</kbd></span>
+                <span class="shortcut-desc">Go to Pull Requests</span>
+              </div>
+              <div class="shortcut-item">
+                <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>4</kbd></span>
+                <span class="shortcut-desc">Go to Issues</span>
+              </div>
+              <div class="shortcut-item">
+                <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>5</kbd></span>
+                <span class="shortcut-desc">Go to Notifications</span>
+              </div>
+              <div class="shortcut-item">
+                <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>6</kbd></span>
+                <span class="shortcut-desc">Go to Insights</span>
+              </div>
+            </div>
+            
+            <div class="shortcut-group">
+              <h3>Actions</h3>
+              <div class="shortcut-item">
+                <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>R</kbd></span>
+                <span class="shortcut-desc">Refresh current view</span>
+              </div>
+              <div class="shortcut-item">
+                <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>F</kbd></span>
+                <span class="shortcut-desc">Advanced search</span>
+              </div>
+              <div class="shortcut-item">
+                <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>K</kbd></span>
+                <span class="shortcut-desc">Command palette</span>
+              </div>
+            </div>
+            
+            <div class="shortcut-group">
+              <h3>General</h3>
+              <div class="shortcut-item">
+                <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>,</kbd></span>
+                <span class="shortcut-desc">Open settings</span>
+              </div>
+              <div class="shortcut-item">
+                <span class="shortcut-keys"><kbd>Esc</kbd></span>
+                <span class="shortcut-desc">Close dialogs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Advanced Search Dialog -->
+    <div id="search-dialog" class="modal-overlay">
+      <div class="modal-dialog" style="max-width: 800px; max-height: 80vh;">
+        <div class="modal-header">
+          <h2>🔍 Advanced Search</h2>
+          <button class="modal-close" onclick="closeSearchDialog()">×</button>
+        </div>
+        <div class="modal-body">
+          <form id="search-form" onsubmit="event.preventDefault(); performAdvancedSearch()">
+            <div class="form-group">
+              <input 
+                type="text" 
+                id="search-input" 
+                class="form-control" 
+                placeholder="Search issues and pull requests..."
+                autofocus
+              >
+            </div>
+            
+            <div class="search-filters">
+              <div class="filter-group">
+                <label>Type</label>
+                <select id="search-type" class="form-control">
+                  <option value="">All</option>
+                  <option value="issue">Issues</option>
+                  <option value="pr">Pull Requests</option>
+                </select>
+              </div>
+              
+              <div class="filter-group">
+                <label>State</label>
+                <select id="search-state" class="form-control">
+                  <option value="">All</option>
+                  <option value="open">Open</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+              
+              <div class="filter-group">
+                <label>Sort By</label>
+                <select id="search-sort" class="form-control">
+                  <option value="created">Created</option>
+                  <option value="updated">Updated</option>
+                  <option value="comments">Comments</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Search</button>
+            </div>
+          </form>
+          
+          <div id="search-results" class="search-results"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Command Palette Dialog -->
+    <div id="command-palette" class="modal-overlay">
+      <div class="modal-dialog" style="max-width: 600px; margin-top: 100px;">
+        <div class="modal-body" style="padding: 0;">
+          <input 
+            type="text" 
+            id="command-input" 
+            class="command-input" 
+            placeholder="Type a command..."
+            oninput="filterCommands()"
+            autofocus
+          >
+          <div id="command-list" class="command-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workflow Trigger Dialog -->
+    <div id="workflow-trigger-dialog" class="modal-overlay">
+      <div class="modal-dialog" style="max-width: 600px;">
+        <div class="modal-header">
+          <h2>▶️ Trigger Workflow</h2>
+          <button class="modal-close" onclick="closeWorkflowTriggerDialog()">×</button>
+        </div>
+        <div class="modal-body">
+          <form id="workflow-trigger-form" onsubmit="event.preventDefault(); triggerWorkflow()">
+            <div class="form-group">
+              <label>Workflow</label>
+              <input 
+                type="text" 
+                id="workflow-name-display" 
+                class="form-control" 
+                readonly
+              >
+            </div>
+            
+            <div class="form-group">
+              <label>Branch/Ref *</label>
+              <input 
+                type="text" 
+                id="workflow-ref" 
+                name="ref" 
+                class="form-control" 
+                value="main" 
+                required
+                placeholder="main"
+              >
+              <small>The git ref (branch, tag, or commit SHA) to run the workflow on</small>
+            </div>
+            
+            <div class="form-group">
+              <label>Inputs (JSON)</label>
+              <textarea 
+                id="workflow-inputs" 
+                name="inputs" 
+                class="form-control" 
+                rows="8"
+                placeholder='{\n  "key": "value"\n}'
+              ></textarea>
+              <small>Optional workflow inputs as JSON object</small>
+            </div>
+            
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Trigger Workflow</button>
+              <button type="button" class="btn-secondary" onclick="closeWorkflowTriggerDialog()">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Local Path Dialog -->
+    <div id="local-path-dialog" class="modal-overlay">
+      <div class="modal-dialog" style="max-width: 600px;">
+        <div class="modal-header">
+          <h2>📁 Set Local Repository Path</h2>
+          <button class="modal-close" onclick="closeLocalPathDialog()">×</button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted" style="margin-bottom: 16px;">
+            Set the local path where this repository is cloned on your machine.
+            This enables local file browsing and Git operations.
+          </p>
+          <div class="form-group">
+            <label>Local Path</label>
+            <div class="local-path-input-group">
+              <input type="text" id="local-path-input" class="form-control" placeholder="C:\Users\...\repo-name">
+              <button type="button" class="btn-secondary" onclick="browseLocalPath()">Browse...</button>
+            </div>
+          </div>
+          <div id="local-path-status" class="text-muted" style="margin-bottom: 16px;"></div>
+          <div class="form-actions">
+            <button type="button" class="btn-primary" onclick="saveLocalPath()">Save</button>
+            <button type="button" class="btn-secondary" onclick="closeLocalPathDialog()">Cancel</button>
+            <button type="button" class="btn-secondary" onclick="clearLocalPath()" style="margin-left: auto;">Clear Path</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Repository Selector Dialog -->
+    <div id="repo-selector-dialog" class="modal-overlay">
+      <div class="modal-dialog" style="max-width: 700px; max-height: 80vh;">
+        <div class="modal-header">
+          <h2>📂 Select Repositories to Monitor</h2>
+          <button class="modal-close" onclick="closeRepoSelector()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="repo-selector-controls">
+            <input 
+              type="text" 
+              id="repo-search" 
+              class="form-control" 
+              placeholder="Search repositories..."
+              oninput="filterRepoList()"
+            >
+            <div class="repo-selector-actions">
+              <button type="button" class="btn-secondary" onclick="selectAllRepos()">Select All</button>
+              <button type="button" class="btn-secondary" onclick="selectNoneRepos()">Select None</button>
+            </div>
+          </div>
+          <div id="repo-list" class="repo-list">
+            <div class="loading-container">
+              <div class="loading"></div>
+              <p>Loading repositories...</p>
+            </div>
+          </div>
+          <div class="repo-selector-footer">
+            <span id="repo-count">0 repositories selected</span>
+            <div class="form-actions" style="margin: 0; padding: 0; border: none;">
+              <button type="button" class="btn-primary" onclick="saveRepoSelection()">Save Selection</button>
+              <button type="button" class="btn-secondary" onclick="closeRepoSelector()">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- File Viewer Modal -->
+    <div id="file-viewer-modal" class="file-viewer-modal">
+      <div class="file-viewer-header">
+        <div class="file-viewer-title">
+          <span class="file-icon" id="file-viewer-icon">📄</span>
+          <div>
+            <div id="file-viewer-name">filename.js</div>
+            <div class="file-viewer-path" id="file-viewer-path"></div>
+          </div>
+        </div>
+        <div class="file-viewer-actions">
+          <button class="btn-secondary" id="file-viewer-open-external" title="Open externally">↗️ Open</button>
+          <button class="file-viewer-close" onclick="closeFileViewer()">×</button>
+        </div>
+      </div>
+      <div class="file-viewer-content" id="file-viewer-content">
+        <div class="file-viewer-loading">
+          <div class="loading"></div>
+          <span style="margin-left: 12px;">Loading file...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./src/ui/components/log-viewer.js"></script>
+  <script src="./src/ui/components/artifact-browser.js"></script>
+  <script src="./src/ui/components/pr-viewer.js"></script>
+  <script src="./src/ui/components/issue-viewer.js"></script>
+  <script src="./src/ui/app.js"></script>
+</body>
+</html>

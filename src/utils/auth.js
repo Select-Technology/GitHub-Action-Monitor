@@ -79,6 +79,9 @@ class AuthService {
       authUrl.searchParams.append('code_challenge_method', 'S256');
 
       // Open in default browser
+      console.log('Opening OAuth URL:', authUrl.toString());
+      console.log('Client ID:', this.clientId);
+      console.log('Redirect URI:', this.redirectUri);
       await shell.openExternal(authUrl.toString());
 
       console.log('OAuth flow started, waiting for callback...');

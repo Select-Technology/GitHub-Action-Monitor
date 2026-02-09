@@ -111,7 +111,7 @@
     .main-content {
       padding: 24px;
       overflow-y: auto;
-      height: calc(100vh - 110px);
+      height: calc(100vh - 152px);
     }
 
     .empty-state {
@@ -517,6 +517,146 @@
       color: rgba(255, 255, 255, 0.5);
       margin-top: 8px;
     }
+
+    .filter-bar {
+      background: #16213e;
+      padding: 8px 24px;
+      border-bottom: 1px solid #0f3460;
+    }
+
+    .filter-bar input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      background: #1a1a2e;
+      color: #fff;
+      font-size: 13px;
+      -webkit-app-region: no-drag;
+    }
+
+    .filter-bar input:focus {
+      outline: none;
+      border-color: #e87722;
+    }
+
+    .filter-bar input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .pull-btn {
+      background: none;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      margin-left: auto;
+      transition: 0.2s;
+    }
+
+    .pull-btn:hover {
+      border-color: #e87722;
+      color: #e87722;
+    }
+
+    .pull-btn.pulling {
+      color: #3498db;
+      border-color: #3498db;
+      pointer-events: none;
+    }
+
+    .pull-btn.pull-success {
+      color: #27ae60;
+      border-color: #27ae60;
+    }
+
+    .pull-btn.pull-error {
+      color: #e74c3c;
+      border-color: #e74c3c;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .pull-btn.pulling::before {
+      content: "";
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border: 2px solid #3498db;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .run-btn {
+      background: none;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      transition: 0.2s;
+    }
+
+    .run-btn:hover {
+      border-color: #3498db;
+      color: #3498db;
+    }
+
+    .run-btn.dispatch-success {
+      color: #27ae60;
+      border-color: #27ae60;
+    }
+
+    .run-btn.dispatch-error {
+      color: #e74c3c;
+      border-color: #e74c3c;
+    }
+
+    .trigger-modal select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      background: #1a1a2e;
+      color: #fff;
+      font-size: 14px;
+      margin-bottom: 16px;
+      -webkit-app-region: no-drag;
+    }
+
+    .trigger-modal select:focus {
+      outline: none;
+      border-color: #e87722;
+    }
+
+    .trigger-modal .trigger-status {
+      font-size: 13px;
+      margin-bottom: 16px;
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+
+    .trigger-modal .trigger-status.hidden {
+      display: none;
+    }
+
+    .trigger-modal .trigger-status.error {
+      background: rgba(231, 76, 60, 0.2);
+      border: 1px solid #e74c3c;
+      color: #e74c3c;
+    }
+
+    .trigger-modal .trigger-status.loading {
+      color: #3498db;
+    }
   </style>
 </head>
 <body>
@@ -550,6 +690,10 @@
       <span class="status-dot queued"></span>
       <span>Queued: <strong id="queuedCount">0</strong></span>
     </div>
+  </div>
+
+  <div class="filter-bar">
+    <input type="text" id="repoNameFilter" placeholder="Filter repositories by name...">
   </div>
 
   <div class="main-content" id="mainContent">
@@ -599,6 +743,24 @@
     </div>
   </div>
 
+  <div class="modal-overlay hidden" id="triggerModal">
+    <div class="modal trigger-modal">
+      <h2>Run Workflow</h2>
+      <p id="triggerRepoName"></p>
+      <div class="trigger-status hidden" id="triggerStatus"></div>
+      <label for="triggerWorkflowSelect">Workflow</label>
+      <select id="triggerWorkflowSelect">
+        <option value="">Loading workflows...</option>
+      </select>
+      <label for="triggerBranchInput">Branch</label>
+      <input type="text" id="triggerBranchInput" placeholder="main">
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" id="cancelTriggerBtn">Cancel</button>
+        <button class="btn btn-primary" id="dispatchBtn">Dispatch</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const GITHUB_API = 'https://api.github.com';
     const REFRESH_INTERVAL = 90000; // 90 seconds
@@ -611,6 +773,8 @@
     let repoCacheTime = parseInt(localStorage.getItem('repo_cache_time')) || 0;
     let tempSelectedRepos = []; // For the filter modal
     let refreshTimer = null;
+    let lastGroupedData = []; // For client-side name filtering
+    let repoLocalPaths = JSON.parse(localStorage.getItem('repo_local_paths')) || {};
 
     // DOM Elements
     const mainContent = document.getElementById('mainContent');
@@ -681,6 +845,24 @@
         fetchWorkflowRuns();
       }
     });
+
+    const repoNameFilter = document.getElementById('repoNameFilter');
+    repoNameFilter.addEventListener('input', () => {
+      renderWorkflows(lastGroupedData);
+    });
+
+    // Trigger modal elements
+    const triggerModal = document.getElementById('triggerModal');
+    const triggerRepoName = document.getElementById('triggerRepoName');
+    const triggerStatus = document.getElementById('triggerStatus');
+    const triggerWorkflowSelect = document.getElementById('triggerWorkflowSelect');
+    const triggerBranchInput = document.getElementById('triggerBranchInput');
+    const cancelTriggerBtn = document.getElementById('cancelTriggerBtn');
+    const dispatchBtn = document.getElementById('dispatchBtn');
+    let triggerCurrentRepo = '';
+
+    cancelTriggerBtn.addEventListener('click', () => triggerModal.classList.add('hidden'));
+    dispatchBtn.addEventListener('click', dispatchWorkflow);
 
     // Repo filter event listeners
     repoFilterBtn.addEventListener('click', showRepoFilterModal);
@@ -1015,25 +1197,183 @@
     }
 
     function renderWorkflows(grouped) {
-      if (grouped.length === 0) {
-        mainContent.innerHTML = `
-          <div class="empty-state">
-            <h2>No workflow runs found</h2>
-            <p>No workflow runs in the last ${timeWindowMinutes} minutes across your repositories</p>
-          </div>
-        `;
+      // Store for re-filtering without re-fetching
+      if (grouped !== lastGroupedData) {
+        lastGroupedData = grouped;
+      }
+
+      // Apply name filter
+      const filterTerm = repoNameFilter.value.toLowerCase();
+      const filtered = filterTerm
+        ? grouped.filter(repo => repo.name.toLowerCase().includes(filterTerm))
+        : grouped;
+
+      if (filtered.length === 0) {
+        mainContent.innerHTML = filterTerm
+          ? `<div class="empty-state">
+              <h2>No matching repositories</h2>
+              <p>No repositories match "${repoNameFilter.value}"</p>
+            </div>`
+          : `<div class="empty-state">
+              <h2>No workflow runs found</h2>
+              <p>No workflow runs in the last ${timeWindowMinutes} minutes across your repositories</p>
+            </div>`;
         return;
       }
 
-      mainContent.innerHTML = grouped.map(repo => `
-        <div class="repo-group">
-          <div class="repo-header">
-            <span>&#128193;</span>
-            <a href="${repo.url}" target="_blank">${repo.name}</a>
+      mainContent.innerHTML = filtered.map(repo => {
+        const hasPath = !!repoLocalPaths[repo.name];
+        const pullTitle = hasPath
+          ? `Pull ${repoLocalPaths[repo.name]}`
+          : 'Set local folder & pull';
+        return `
+          <div class="repo-group">
+            <div class="repo-header">
+              <span>&#128193;</span>
+              <a href="${repo.url}" target="_blank">${repo.name}</a>
+              <button class="pull-btn" data-repo="${repo.name}" title="${pullTitle}">Pull</button>
+              <button class="run-btn" data-repo="${repo.name}" title="Dispatch a workflow">Run</button>
+            </div>
+            ${repo.runs.map(run => renderWorkflowRun(run)).join('')}
           </div>
-          ${repo.runs.map(run => renderWorkflowRun(run)).join('')}
-        </div>
-      `).join('');
+        `;
+      }).join('');
+
+      // Attach pull button handlers
+      mainContent.querySelectorAll('.pull-btn').forEach(btn => {
+        btn.addEventListener('click', () => handlePull(btn));
+      });
+
+      // Attach run button handlers
+      mainContent.querySelectorAll('.run-btn').forEach(btn => {
+        btn.addEventListener('click', () => showTriggerModal(btn.dataset.repo));
+      });
+    }
+
+    async function handlePull(btn) {
+      const repoName = btn.dataset.repo;
+
+      // If no local path stored, prompt to pick folder
+      if (!repoLocalPaths[repoName]) {
+        if (!window.electronAPI) return;
+        const folder = await window.electronAPI.pickFolder();
+        if (!folder) return;
+        repoLocalPaths[repoName] = folder;
+        localStorage.setItem('repo_local_paths', JSON.stringify(repoLocalPaths));
+        btn.title = `Pull ${folder}`;
+      }
+
+      // Execute git pull
+      btn.classList.add('pulling');
+      btn.textContent = 'Pulling...';
+
+      const result = await window.electronAPI.gitPull(repoLocalPaths[repoName]);
+
+      btn.classList.remove('pulling');
+      if (result.success) {
+        btn.classList.add('pull-success');
+        btn.textContent = result.output || 'Up to date';
+        btn.title = `Pull ${repoLocalPaths[repoName]}`;
+      } else {
+        btn.classList.add('pull-error');
+        btn.textContent = 'Error';
+        btn.title = result.error;
+      }
+
+      // Reset after 3 seconds
+      setTimeout(() => {
+        btn.classList.remove('pull-success', 'pull-error');
+        btn.textContent = 'Pull';
+      }, 3000);
+    }
+
+    async function showTriggerModal(repoName) {
+      triggerCurrentRepo = repoName;
+      triggerRepoName.textContent = repoName;
+      triggerStatus.classList.add('hidden');
+      triggerWorkflowSelect.innerHTML = '<option value="">Loading workflows...</option>';
+      dispatchBtn.disabled = true;
+
+      // Pre-fill branch from cached repo data
+      const repoData = cachedRepos.find(r => r.full_name === repoName);
+      triggerBranchInput.value = repoData?.default_branch || 'main';
+
+      triggerModal.classList.remove('hidden');
+
+      try {
+        const workflows = await fetchRepoWorkflows(repoName);
+        if (workflows.length === 0) {
+          triggerWorkflowSelect.innerHTML = '<option value="">No workflows found</option>';
+          return;
+        }
+        triggerWorkflowSelect.innerHTML = workflows.map(wf =>
+          `<option value="${wf.id}">${wf.name}</option>`
+        ).join('');
+        dispatchBtn.disabled = false;
+      } catch (error) {
+        triggerWorkflowSelect.innerHTML = '<option value="">Error loading workflows</option>';
+      }
+    }
+
+    async function fetchRepoWorkflows(repoName) {
+      const response = await fetch(`${GITHUB_API}/repos/${repoName}/actions/workflows`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      return data.workflows.filter(wf => wf.state === 'active');
+    }
+
+    async function dispatchWorkflow() {
+      const workflowId = triggerWorkflowSelect.value;
+      const ref = triggerBranchInput.value.trim();
+      if (!workflowId || !ref) return;
+
+      triggerStatus.className = 'trigger-status loading';
+      triggerStatus.textContent = 'Dispatching...';
+      triggerStatus.classList.remove('hidden');
+      dispatchBtn.disabled = true;
+
+      try {
+        const response = await fetch(
+          `${GITHUB_API}/repos/${triggerCurrentRepo}/actions/workflows/${workflowId}/dispatches`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ref })
+          }
+        );
+
+        if (response.status === 204) {
+          triggerModal.classList.add('hidden');
+          // Flash the Run button green
+          const runBtn = mainContent.querySelector(`.run-btn[data-repo="${triggerCurrentRepo}"]`);
+          if (runBtn) {
+            runBtn.classList.add('dispatch-success');
+            runBtn.textContent = 'Dispatched';
+            setTimeout(() => {
+              runBtn.classList.remove('dispatch-success');
+              runBtn.textContent = 'Run';
+            }, 3000);
+          }
+        } else {
+          const data = await response.json();
+          triggerStatus.className = 'trigger-status error';
+          triggerStatus.textContent = data.message || `Error: HTTP ${response.status}`;
+          dispatchBtn.disabled = false;
+        }
+      } catch (error) {
+        triggerStatus.className = 'trigger-status error';
+        triggerStatus.textContent = 'Network error. Please try again.';
+        dispatchBtn.disabled = false;
+      }
     }
 
     function renderWorkflowRun(run) {
